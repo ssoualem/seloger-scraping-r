@@ -1,0 +1,67 @@
+---
+title: "Scraping SeLoger.com with R"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## TBD
+
+
+
+```{r}
+source("seloger_api.R")
+```
+
+## TODO : RMD scripts parameters
+```{r}
+
+```
+
+
+
+
+
+
+
+```{r}
+
+```
+
+
+## Proto
+```{r}
+
+
+#search_url_1 <- "http://ws.seloger.com/search.xml?idq=1244,1290,1247&ci=830137&idqfix=1&pxmin=30000&pxmax=60000&idtt=2&SEARCHpg=1&getDtCreationMax=1&tri=d_dt_crea"
+
+test_search_url <- get_search_url(330192)
+
+test_xml <- xmlParse(test_search_url)
+
+test_listing <- get_listings_df(test_xml)
+
+test_listing[7, ]$listing_id
+test_listing[7, ]$has_living_room
+
+
+get_all_listing_df()
+get_all_listing_df(75, min_price = 1000)
+get_all_listing_df(75, order_by = "dt_asc")
+
+get_all_listing_df(75)
+
+length(getNodeSet(test_xml, "//annonce"))
+
+
+```
+
+## TODO : cleanup data (NA, "", etc.)
+```{r}
+# TODO : convert <NA> and blanks to same value at the end (value TBD)
+
+```
+
+## TODO : move functions and constants to separate files

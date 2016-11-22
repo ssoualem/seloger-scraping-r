@@ -7,9 +7,6 @@ source("seloger_api_constant.R")
 
 # TODO : doc (1 sentence explanation, descr arg IN and OUT)
 
-# search_type : 1 = "for rent"", 2 = "for sale"
-# property_type : character vector and NA for all
-# postal_cd : TODO : have link to postal code / insee code mapping
 # TODO : basic arg checking ?
 get_search_url <- function(
   postal_cd
@@ -147,8 +144,6 @@ get_displayed_nb_listing <- function(xml) {
 }
 
 get_next_pg_url <- function(xml) {
-  # TODO : remove repetitions http://ws.seloger.com/http://ws.seloger.com/http://ws.seloger.com/http://ws.seloger.com/search.xml?
-  
   nodes <- getNodeSet(xml, "//pageSuivante")
   if(length(nodes) > 0) {
     result <- xmlValue(nodes[[1]])
@@ -183,9 +178,20 @@ get_all_page_xml <- function(search_url, verbose = FALSE) {
   listing_xml
 }
 
+# a function that returns the position of n-th largest
+maxn <- function(n) function(x) order(x, decreasing = TRUE)[n]
 
-# TODO : progress bar
+max2 <- maxn(2)
+
+#########################################################################################################
+# TODO : if rent attribute exists and is not NA, use it for the max calc instead of price
+#########################################################################################################
+
+# This function WILL output duplicate listings to avoid missing some
+# The duplicates need to be removed based on the listing_id
 get_all_listing_df <- function(..., min_price= 0, listing_df_list = NULL, verbose = FALSE) {
+
+  
   # Store search parameters to be able to modify some of them afterwards
   search_param <- list(...)
   if(!is.null(search_param$order_by)) {
@@ -210,7 +216,23 @@ get_all_listing_df <- function(..., min_price= 0, listing_df_list = NULL, verbos
   # If not all results can be displayed, do another search to get more results
   if(total_nb_listing > nb_displayed_listing) {
     # Get current highest price to set the minimum price of the next search
-    max_price <- max(listing_df_list[[length(listing_df_list)]]$price, na.rm = TRUE)
+    
+    last_df <- listing_df_list[[length(listing_df_list)]]
+    max_price <- max(last_df$price)
+    max2_idx <- max2(last_df$price)
+    max2_price <- last_df[max2_idx, ]$price
+    
+    # Maximum price too big : probable data quality problem 
+    # => use second maximum price as the lower bound for the next search
+    if(max_price > 2 * max2_price) {
+      max_price <- max2_price
+    }
+    
+    if(min_price >= max_price) {
+      stop(paste0("The new third maximum price (", max_price, ") is not higher than the 
+            minimum price of this search (", min_price,").
+           Stopping to avoid infinite recursion"))
+    }
     
     # Wait 1 second to not spam the server
     Sys.sleep(1)
@@ -218,6 +240,16 @@ get_all_listing_df <- function(..., min_price= 0, listing_df_list = NULL, verbos
     # Recursive call to get all the results
     listing_df_list <- get_all_listing_df(..., min_price = max_price, listing_df_list = listing_df_list, verbose = verbose)
   }
-  
   listing_df_list
+}
+
+merge_listing_df <- function(listing_list) {
+  # Concatenate into 1 dataframe
+  df <- bind_rows(listing_list)
+  
+  # Sort by ascending price (not needed for now)
+  #df <- arrange(df, price)
+  
+  # remove duplicate listings scraped because of the recursive method of get_all_listing_df()
+  df[!duplicated(df$listing_id), ]
 }

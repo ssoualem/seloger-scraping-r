@@ -29,8 +29,35 @@ all_pg_xml_paris[[4]]
 no_result <- get_all_page_xml(search_url_no_result)
 
 
+# TODO : compare w/ verbose output to at least count number of listings retrieved
+listing_paris_test_1 <- get_all_listing_df(postal_cd = 75, search_type = "rent", max_surf_area = 10, verbose = TRUE)
 
-get_all_listing_df(postal_cd = 75, max_surf_area = 10, verbose = TRUE)
+complete_df_paris_test_1 <- bind_rows(listing_paris_test_1)
+
+# 608 listings (inflated number by SeLoger after some analysis)
+nrow(complete_df_paris_test_1) #577
+length(unique(complete_df_paris_test_1$listing_id)) #567
+
+merged_paris_test_1 <- merge_listing_df(complete_df_paris_test_1)
+nrow(merged_paris_test_1) #567
+length(unique(merged_paris_test_1$listing_id)) #567
+
+head(merged_paris_test_1)
+
+object.size(merged_paris_test_1) #511KB
+
+merged_paris_test_1 %>% 
+  filter(listing_id == 111414119) %>%
+  select(crtn_dt, updt_dt, title, price, surf_area, postal_cd, description)
 
 
-get_all_listing_df(postal_cd = 75, min_price = 10, max_surf_area = 10, verbose = TRUE)
+listing_paris_test_2 <- get_all_listing_df(postal_cd = 75, search_type = "rent", max_surf_area = 10, verbose = TRUE)
+
+
+complete_df_paris_test_1[duplicated(complete_df_paris_test_1$listing_id), ]
+
+tail()
+max(merged_paris_test_1$price)
+merged_paris_test_1[max2(merged_paris_test_1$price), ]$price
+
+min(merged_paris_test_1$price)

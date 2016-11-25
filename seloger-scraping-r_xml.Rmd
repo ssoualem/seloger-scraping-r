@@ -15,17 +15,21 @@ knitr::opts_chunk$set(echo = TRUE)
 source("seloger_api.R")
 ```
 
-## TODO : RMD scripts parameters
+## Script parameters
 ```{r}
+# All listings with these postal codes will be extracted
+POSTAL_CD_TO_SEARCH <- c(75001, 75002, 75003, 75004, 75005, 75006, 75007, 75008, 75009
+                         , 75010, 75011, 75012, 75013, 75014, 75015, 75016, 75017, 75018
+                         , 75019, 75020, 75116)
 
+#POSTAL_CD_TO_SEARCH <- c(75001, 75002)
 ```
 
 
 
 
 
-## TODO : pipe output to log_file
-
+## Extract listings and save dataframes to files
 ```{r}
 data_dir <- "data"
 log_dir <- "log"
@@ -36,23 +40,58 @@ if(!dir.exists(log_dir)) {
   dir.create(log_dir)
 }
 
-# Date formatting options in ?strptime
-ts <- format(Sys.time(), "%Y%m%d-%H%M%S") %>% as.character()
-rent_75_fname <- file.path(data_dir, paste0("rent_75_", ts, ".Rds"))
-rent_75_log <- file.path(log_dir, paste0("rent_75_", ts, ".log"))
 
-sink(rent_75_log)
-rent_75 <- system.time(get_all_listing_df(postal_cd = 75, search_type = "rent", verbose = TRUE))
-saveRDS(rent_75, rent_75_fname)
+# Log file and data directory for the extraction
+ts <- format(Sys.time(), "%Y%m%d-%H%M%S") %>% as.character()
+log <- file.path(log_dir, paste0("extraction_", ts, ".log"))
+
+extr_data_dir <- file.path(data_dir, ts)
+if(!dir.exists(extr_data_dir)) {
+  dir.create(extr_data_dir)  
+}
+
+# Extract and save to files
+sink(log)
+listing_df <- vector("list", length(POSTAL_CD_TO_SEARCH) * length(SEARCH_TYPE_PARAM_VALUE))
+i <- 1
+for(p_cd in POSTAL_CD_TO_SEARCH) {
+  for(type in names(SEARCH_TYPE_PARAM_VALUE)) {
+    print(paste("For", type, ", postal_cd =", p_cd, ":", Sys.time()))
+    tmp_fname <- file.path(data_dir, paste0(type, "_", p_cd, "_", ts, ".Rds"))
+    listing_df[[i]] <- get_all_listing_df(p_cd, search_type = type, verbose = TRUE) %>% merge_listing_df()
+    saveRDS(listing_df[[i]], tmp_fname)
+    print("")
+    i <- i + 1
+  }
+  print("")
+}
+print("DONE")
 sink()
+
+```
+
+
+## TODO : basic sanity check (compare with manual search on the API)
+```{r}
+for(i in 1:length(listing_df)) {
+  nrow(listing_df[[i]])
+}
+
+filter(listing_df[[1]], listing_id == 112919969) %>%
+  select(party_id, listing_id, agency_id, crtn_dt, updt_dt, title, label, price, price_unit, room_nb, surf_area)
+
+filter(listing_df[[1]], listing_id == 112919969) %>%
+  select(surf_area_unit, country_id, country, postal_cd, location_insee_cd
+         , city, latitude, longitude)
 
 
 ```
 
 
-## TODO : cleanup data (NA, "", etc.) in separate function
+
+## TODO : cleanup data (NA, "", etc.)
 ```{r}
-# TODO : convert <NA> and blanks to same value at the end (value TBD)
+# Done in Tableau instead of R for pedagogical reasons
 
 ```
 

@@ -8,6 +8,16 @@ source("seloger_api_constant.R")
 # TODO : doc (1 sentence explanation, descr arg IN and OUT)
 
 # TODO : basic arg checking ?
+
+# Utility functions not specific to this API (and that should be put in another file...)
+coalesce <- function(..., default = NA) apply(cbind(..., default), 1, function(x) x[which(!is.na(x))[1]])
+
+# a function that returns the position of n-th largest
+maxn <- function(n) function(x) order(x, decreasing = TRUE)[n]
+max2 <- maxn(2)
+
+# API functions
+
 get_search_url <- function(
   postal_cd
   , search_type = names(SEARCH_TYPE_PARAM_VALUE)
@@ -105,6 +115,7 @@ xml_listing_to_df <- function(xml) {
       xml_df$agency_id <- as.integer(xml_df$agency_id)
       xml_df$property_type_cd <- as.integer(xml_df$property_type_cd)
       xml_df$price <- as.numeric(xml_df$price)
+      xml_df$rent <- as.numeric(xml_df$rent)
       xml_df$room_nb  <- as.integer(xml_df$room_nb )
       xml_df$bedroom_nb <- as.integer(xml_df$bedroom_nb)
       xml_df$surf_area <- as.numeric(xml_df$surf_area)
@@ -112,8 +123,8 @@ xml_listing_to_df <- function(xml) {
       xml_df$postal_cd <- as.integer(xml_df$postal_cd)
       xml_df$location_insee_cd <- as.integer(xml_df$location_insee_cd)
       xml_df$photo_nb <- as.integer(xml_df$photo_nb)
-      xml_df$longitude <- as.integer(xml_df$longitude)
-      xml_df$longitude <- as.integer(xml_df$longitude)
+      xml_df$latitude <- as.numeric(xml_df$latitude)
+      xml_df$longitude <- as.numeric(xml_df$longitude)
       xml_df$bathroom_nb <- as.integer(xml_df$bathroom_nb)
       xml_df$shower_room_nb <- as.integer(xml_df$shower_room_nb)
       xml_df$toilet_nb <- as.integer(xml_df$toilet_nb)
@@ -178,11 +189,6 @@ get_all_page_xml <- function(search_url, verbose = FALSE) {
   listing_xml
 }
 
-# a function that returns the position of n-th largest
-maxn <- function(n) function(x) order(x, decreasing = TRUE)[n]
-
-max2 <- maxn(2)
-
 #########################################################################################################
 # TODO : if rent attribute exists and is not NA, use it for the max calc instead of price
 #########################################################################################################
@@ -218,18 +224,21 @@ get_all_listing_df <- function(..., min_price= 0, listing_df_list = NULL, verbos
     # Get current highest price to set the minimum price of the next search
     
     last_df <- listing_df_list[[length(listing_df_list)]]
-    max_price <- max(last_df$price)
-    max2_idx <- max2(last_df$price)
-    max2_price <- last_df[max2_idx, ]$price
+    # Some listings have both rent and price. Try to use rent first to get the maximum price
+    max_price <- max(coalesce(last_df$rent, last_df$price))
+    
+    # TODO : remove max2 if not needed anymore
+    #max2_idx <- max2(last_df$price)
+    #max2_price <- last_df[max2_idx, ]$price
     
     # Maximum price too big : probable data quality problem 
     # => use second maximum price as the lower bound for the next search
-    if(max_price > 2 * max2_price) {
-      max_price <- max2_price
-    }
+    #if(max_price > 2 * max2_price) {
+      #max_price <- max2_price
+    #}
     
     if(min_price >= max_price) {
-      stop(paste0("The new third maximum price (", max_price, ") is not higher than the 
+      stop(paste0("The new maximum price (", max_price, ") is not higher than the 
             minimum price of this search (", min_price,").
            Stopping to avoid infinite recursion"))
     }

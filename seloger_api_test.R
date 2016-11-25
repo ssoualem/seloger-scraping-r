@@ -75,5 +75,13 @@ filter(rent_price_df, listing_id == 114112911)$rent
 filter(rent_price_df, listing_id == 114112911)$price
 
 
+#  Error in if (min_price >= max_price) { 
+# Missing value where true false needed bug
+null_bug_url <- "http://ws.seloger.com/search.xml?cp=75007&idtt=2&pxmin=790000&tri=a_px&SEARCHpg=4"
+null_bug_df <- xmlParse(null_bug_url) %>% xml_listing_to_df()
+max(coalesce(null_bug_df$rent, null_bug_df$price))
 
+max(coalesce(null_bug_df$rent, null_bug_df$price), na.rm = TRUE)
 
+null_bug_df$rent
+null_bug_df$price

@@ -17,20 +17,12 @@ source("seloger_api.R")
 
 ## Script parameters
 ```{r}
-# All listings with these postal codes will be extracted
-POSTAL_CD_TO_SEARCH <- c(75001, 75002, 75003, 75004, 75005, 75006, 75007, 75008, 75009
-                         , 75010, 75011, 75012, 75013, 75014, 75015, 75016, 75017, 75018
-                         , 75019, 75020, 75116)
-
-#POSTAL_CD_TO_SEARCH <- c(75001, 75002)
+# All listings for these departments
+DEPART_TO_GET <- c(75, 77, 78, 91, 92, 93, 94, 95)
 ```
 
-
-
-
-
-## Extract listings and save dataframes to files
 ```{r}
+# Create basic directories
 data_dir <- "data"
 log_dir <- "log"
 if(!dir.exists(data_dir)) {
@@ -40,21 +32,34 @@ if(!dir.exists(log_dir)) {
   dir.create(log_dir)
 }
 
+# Load postal codes reference file (France)
+# Source : https://www.data.gouv.fr/fr/datasets/base-officielle-des-codes-postaux/
+p_cd_ref <- read.csv(file.path(data_dir, "laposte_hexasmal.csv"), sep = ";")
 
+# Get all postal codes of each department (to have many small searches instead of a big one)
+for(i in 1:length(DEPART_TO_GET)) {
+  pattern <- paste0("^", DEPART_TO_GET[i], "[0-9]{3}")
+  postal_cd_to_get[[i]] <- p_cd_ref[grepl(pattern, p_cd_ref$Code_postal), ]$Code_postal
+}
+```
+
+
+## Extract listings and save dataframes to files
+```{r}
 # Log file and data directory for the extraction
 ts <- format(Sys.time(), "%Y%m%d-%H%M%S") %>% as.character()
 log <- file.path(log_dir, paste0("extraction_", ts, ".log"))
 
 extr_data_dir <- file.path(data_dir, ts)
 if(!dir.exists(extr_data_dir)) {
-  dir.create(extr_data_dir)  
+  dir.create(extr_data_dir)
 }
 
 # Extract and save to files
 sink(log)
-listing_df <- vector("list", length(POSTAL_CD_TO_SEARCH) * length(SEARCH_TYPE_PARAM_VALUE))
+listing_df <- vector("list", length(postal_cd_to_get) * length(SEARCH_TYPE_PARAM_VALUE))
 i <- 1
-for(p_cd in POSTAL_CD_TO_SEARCH) {
+for(p_cd in unlist(postal_cd_to_get)) {
   for(type in names(SEARCH_TYPE_PARAM_VALUE)) {
     print(paste("For", type, ", postal_cd =", p_cd, ":", Sys.time()))
     tmp_fname <- file.path(extr_data_dir, paste0(type, "_", p_cd, "_", ts, ".Rds"))
@@ -67,7 +72,6 @@ for(p_cd in POSTAL_CD_TO_SEARCH) {
 }
 print("DONE")
 sink()
-
 ```
 
 
@@ -83,7 +87,6 @@ filter(listing_df[[1]], listing_id == 112919969) %>%
 filter(listing_df[[1]], listing_id == 112919969) %>%
   select(surf_area_unit, country_id, country, postal_cd, location_insee_cd
          , city, latitude, longitude)
-
 
 ```
 

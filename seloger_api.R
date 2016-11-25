@@ -56,11 +56,11 @@ get_search_url <- function(
   }
   # min_price
   if(!is.null(min_price)) {
-    search_param <- paste0(search_param, "&pxmin=", min_price)  
+    search_param <- paste0(search_param, "&pxmin=", format(min_price, scientific = FALSE))  
   }
   # max_price
   if(!is.null(max_price)) {
-    search_param <- paste0(search_param, "&pxmax=", max_price)  
+    search_param <- paste0(search_param, "&pxmax=", format(max_price, scientific = FALSE))  
   }
   # min_surf_area
   if(!is.null(min_surf_area)) {
@@ -225,7 +225,7 @@ get_all_listing_df <- function(..., min_price= 0, listing_df_list = NULL, verbos
     
     last_df <- listing_df_list[[length(listing_df_list)]]
     # Some listings have both rent and price. Try to use rent first to get the maximum price
-    max_price <- max(coalesce(last_df$rent, last_df$price))
+    max_price <- max(coalesce(last_df$rent, last_df$price), na.rm = TRUE)
     
     # TODO : remove max2 if not needed anymore
     #max2_idx <- max2(last_df$price)

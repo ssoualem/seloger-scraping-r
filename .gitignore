@@ -3,5 +3,6 @@
 .RData
 .Ruserdata
 
-data/
+data/*
+!data/laposte_hexasmal.csv
 log/

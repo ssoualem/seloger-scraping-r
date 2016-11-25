@@ -57,7 +57,7 @@ i <- 1
 for(p_cd in POSTAL_CD_TO_SEARCH) {
   for(type in names(SEARCH_TYPE_PARAM_VALUE)) {
     print(paste("For", type, ", postal_cd =", p_cd, ":", Sys.time()))
-    tmp_fname <- file.path(data_dir, paste0(type, "_", p_cd, "_", ts, ".Rds"))
+    tmp_fname <- file.path(extr_data_dir, paste0(type, "_", p_cd, "_", ts, ".Rds"))
     listing_df[[i]] <- get_all_listing_df(p_cd, search_type = type, verbose = TRUE) %>% merge_listing_df()
     saveRDS(listing_df[[i]], tmp_fname)
     print("")

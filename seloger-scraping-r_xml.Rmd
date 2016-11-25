@@ -17,8 +17,8 @@ source("seloger_api.R")
 
 ## Script parameters
 ```{r}
-# All listings for these departments
-DEPART_TO_GET <- c(75, 77, 78, 91, 92, 93, 94, 95)
+# All listings for these departments will be extracted
+DEPART_TO_GET <- c(92, 93, 94, 95, 91, 78, 77, 75)
 ```
 
 ```{r}
@@ -33,7 +33,7 @@ if(!dir.exists(log_dir)) {
 }
 
 # Load postal codes reference file (France)
-# Source : https://www.data.gouv.fr/fr/datasets/base-officielle-des-codes-postaux/
+# Data source : https://www.data.gouv.fr/fr/datasets/base-officielle-des-codes-postaux/
 p_cd_ref <- read.csv(file.path(data_dir, "laposte_hexasmal.csv"), sep = ";")
 
 # Get all postal codes of each department (to have many small searches instead of a big one)
@@ -59,7 +59,7 @@ if(!dir.exists(extr_data_dir)) {
 sink(log)
 listing_df <- vector("list", length(postal_cd_to_get) * length(SEARCH_TYPE_PARAM_VALUE))
 i <- 1
-for(p_cd in unlist(postal_cd_to_get)) {
+for(p_cd in postal_cd_to_get) {
   for(type in names(SEARCH_TYPE_PARAM_VALUE)) {
     print(paste("For", type, ", postal_cd =", p_cd, ":", Sys.time()))
     tmp_fname <- file.path(extr_data_dir, paste0(type, "_", p_cd, "_", ts, ".Rds"))

@@ -2,6 +2,7 @@ BASE_URL <- "http://ws.seloger.com"
 BASE_SEARCH_URL <- paste0(BASE_URL, "/search.xml?")
 
 
+
 # Original French attributes names used for the listings in the API
 # Some unnecessary attributes are commented and are kept for information purposes
 LISTING_ATTR_FR_API <- c(
@@ -34,6 +35,7 @@ LISTING_ATTR_FR_API <- c(
   , "codeInsee"
   , "ville"
   , "nbPhotos"
+  , "permaLien"
   , "latitude"
   , "longitude"
   , "typeDPE"
@@ -85,6 +87,7 @@ LISTING_ATTR_EN <- c(
   , "location_insee_cd"
   , "city"
   , "photo_nb"
+  , "permalink"
   , "latitude"
   , "longitude"
   , "dpe_type"

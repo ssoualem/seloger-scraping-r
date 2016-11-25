@@ -9,14 +9,7 @@ source("seloger_api_constant.R")
 
 # TODO : basic arg checking ?
 
-# Utility functions not specific to this API (and that should be put in another file...)
 coalesce <- function(..., default = NA) apply(cbind(..., default), 1, function(x) x[which(!is.na(x))[1]])
-
-# a function that returns the position of n-th largest
-maxn <- function(n) function(x) order(x, decreasing = TRUE)[n]
-max2 <- maxn(2)
-
-# API functions
 
 get_search_url <- function(
   postal_cd
@@ -137,9 +130,11 @@ xml_listing_to_df <- function(xml) {
 get_total_nb_listing <- function(xml) {
   nodes <- getNodeSet(xml, "//nbTrouvees")
   if(length(nodes) > 0) {
-    result <- xmlValue(nodes[[1]]) %>% as.numeric()
+    result <- xmlValue(nodes[[1]]) %>% 
+      as.numeric() %>%
+      coalesce(0)
   } else {
-    result <- NULL
+    result <- 0
   }
   result
 }
@@ -147,9 +142,11 @@ get_total_nb_listing <- function(xml) {
 get_displayed_nb_listing <- function(xml) {
   nodes <- getNodeSet(xml, "//nbAffichables")
   if(length(nodes) > 0) {
-    result <- xmlValue(nodes[[1]]) %>% as.numeric()
+    result <- xmlValue(nodes[[1]]) %>% 
+      as.numeric() %>%
+      coalesce(0)
   } else {
-    result <- NULL
+    result <- 0
   }
   result
 }
@@ -196,8 +193,6 @@ get_all_page_xml <- function(search_url, verbose = FALSE) {
 # This function WILL output duplicate listings to avoid missing some
 # The duplicates need to be removed based on the listing_id
 get_all_listing_df <- function(..., min_price= 0, listing_df_list = NULL, verbose = FALSE) {
-
-  
   # Store search parameters to be able to modify some of them afterwards
   search_param <- list(...)
   if(!is.null(search_param$order_by)) {

@@ -85,3 +85,8 @@ max(coalesce(null_bug_df$rent, null_bug_df$price), na.rm = TRUE)
 
 null_bug_df$rent
 null_bug_df$price
+
+# 0 listings
+zero_listing <- "http://ws.seloger.com/search.xml?idtt=1&cp=77139&pxmin=0&tri=a_px"
+zero_xml <- xmlParse(zero_listing)
+get_displayed_nb_listing(zero_xml)

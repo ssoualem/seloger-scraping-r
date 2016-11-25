@@ -59,7 +59,7 @@ if(!dir.exists(extr_data_dir)) {
 sink(log)
 listing_df <- vector("list", length(postal_cd_to_get) * length(SEARCH_TYPE_PARAM_VALUE))
 i <- 1
-for(p_cd in postal_cd_to_get) {
+for(p_cd in unlist(postal_cd_to_get)) {
   for(type in names(SEARCH_TYPE_PARAM_VALUE)) {
     print(paste("For", type, ", postal_cd =", p_cd, ":", Sys.time()))
     tmp_fname <- file.path(extr_data_dir, paste0(type, "_", p_cd, "_", ts, ".Rds"))

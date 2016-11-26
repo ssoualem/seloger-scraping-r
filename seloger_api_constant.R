@@ -1,3 +1,6 @@
+# Time between requests in seconds
+TIME_BETWEEN_REQ_S <- 1
+
 BASE_URL <- "http://ws.seloger.com"
 BASE_SEARCH_URL <- paste0(BASE_URL, "/search.xml?")
 
@@ -6,7 +9,8 @@ BASE_SEARCH_URL <- paste0(BASE_URL, "/search.xml?")
 # Original French attributes names used for the listings in the API
 # Some unnecessary attributes are commented and are kept for information purposes
 LISTING_ATTR_FR_API <- c(
-  "idTiers"
+  "idtt"
+  , "idTiers"
   , "idAnnonce"
   , "idAgence"
   #, "idPublication"
@@ -58,7 +62,8 @@ LISTING_ATTR_FR_API <- c(
 
 # English attributes names => make sure the number and order is the same as in LISTING_ATTR_FR_API
 LISTING_ATTR_EN <- c(
-  "party_id"
+  "search_type_cd"
+  , "party_id"
   , "listing_id"
   , "agency_id"
   #, "publication_id"

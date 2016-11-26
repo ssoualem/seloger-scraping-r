@@ -18,7 +18,18 @@ source("seloger_api.R")
 ## Script parameters
 ```{r}
 # All listings for these departments will be extracted
-DEPART_TO_GET <- c(92, 93, 94, 95, 91, 78, 77, 75)
+# Ile-de-France
+#DEPART_TO_GET <- c(77, 75, 78, 91, 92, 93, 94, 95)
+
+# Paris and the "small ring"
+DEPART_TO_GET <- c(92, 93, 94, 75)
+
+# Paris
+#DEPART_TO_GET <- c(75)
+
+# For each department, the postal codes will be grouped into MAX_NB_P_CD_SEARCH_PER_DEPT groups
+# to avoid having too many small search queries
+MAX_NB_P_CD_SEARCH_PER_DEPT <- 5
 ```
 
 ```{r}
@@ -36,10 +47,28 @@ if(!dir.exists(log_dir)) {
 # Data source : https://www.data.gouv.fr/fr/datasets/base-officielle-des-codes-postaux/
 p_cd_ref <- read.csv(file.path(data_dir, "laposte_hexasmal.csv"), sep = ";")
 
+postal_cd_by_dept <- vector("list", length(DEPART_TO_GET))
+names(postal_cd_by_dept) <- paste0("p_cd_", DEPART_TO_GET)
 # Get all postal codes of each department (to have many small searches instead of a big one)
 for(i in 1:length(DEPART_TO_GET)) {
   pattern <- paste0("^", DEPART_TO_GET[i], "[0-9]{3}")
-  postal_cd_to_get[[i]] <- p_cd_ref[grepl(pattern, p_cd_ref$Code_postal), ]$Code_postal
+  postal_cd_by_dept[[i]] <- p_cd_ref[grepl(pattern, p_cd_ref$Code_postal), ]$Code_postal %>%
+                              as.character()
+}
+
+# Special case : postal codes 75016 and 75116 are the same and are to be used together in a search
+if(!is.null(postal_cd_by_dept$p_cd_75)) {
+  postal_cd_by_dept$p_cd_75 <- postal_cd_by_dept$p_cd_75[!(postal_cd_by_dept$p_cd_75 %in% c("75016", "75116"))]
+  postal_cd_by_dept$p_cd_75 <- c(postal_cd_by_dept$p_cd_75, "75016,75116")
+}
+
+postal_cd_to_search <- list()
+for(i in 1:length(postal_cd_by_dept)) {
+  dept <- postal_cd_by_dept[[i]]
+  
+  # Suppress warnings of split (because not all splits are of equal length)
+  split_p_cd <- suppressWarnings(split(dept, c(1:MAX_NB_P_CD_SEARCH_PER_DEPT)))
+  postal_cd_to_search <- append(postal_cd_to_search, split_p_cd)
 }
 ```
 
@@ -57,29 +86,56 @@ if(!dir.exists(extr_data_dir)) {
 
 # Extract and save to files
 sink(log)
-listing_df <- vector("list", length(postal_cd_to_get) * length(SEARCH_TYPE_PARAM_VALUE))
+listing_df <- vector("list", length(postal_cd_to_search) * length(SEARCH_TYPE_PARAM_VALUE))
+pb <- txtProgressBar(min = 0, max = length(listing_df), style = 3)
 i <- 1
-for(p_cd in unlist(postal_cd_to_get)) {
+for(p_cd in postal_cd_to_search) {
+  p_cd_str <- paste(p_cd, collapse = ',')
+  dept_nb <- substring(p_cd_str, 1, 2)
+  
   for(type in names(SEARCH_TYPE_PARAM_VALUE)) {
-    print(paste("For", type, ", postal_cd =", p_cd, ":", Sys.time()))
-    tmp_fname <- file.path(extr_data_dir, paste0(type, "_", p_cd, "_", ts, ".Rds"))
-    listing_df[[i]] <- get_all_listing_df(p_cd, search_type = type, verbose = TRUE) %>% merge_listing_df()
+    setTxtProgressBar(pb, i)
+    cat(paste("\nFor", type, ", postal_cd =", p_cd_str, ":", Sys.time(), "\n\n"))
+    tmp_fname <- file.path(extr_data_dir, paste0(i, "_", type, "_", dept_nb, "_", ts, ".Rds"))
+    listing_df[[i]] <- get_all_listing_df(p_cd_str, search_type = type, verbose = TRUE) %>% merge_listing_df()
     saveRDS(listing_df[[i]], tmp_fname)
-    print("")
+    cat("\n")
     i <- i + 1
   }
-  print("")
+ cat("\n")
 }
-print("DONE")
+cat("\nDONE\n")
 sink()
+```
+
+
+## TODO : merge into 1 DF
+```{r}
+# TODO : if listing_df does not exist or empty, create listing_df from all the RDS files
+# => data_to_load_dir <- extr_data_dir if exists and not empty. If not throw error to force manual directory setting
+
+data_to_load_dir <- extr_data_dir
+
+for(i in 1:length(listing_df)) {
+  print(paste(i, ":", nrow(listing_df[[i]])))
+}
+
+merged_listing_df <- bind_rows(listing_df)
 ```
 
 
 ## TODO : basic sanity check (compare with manual search on the API)
 ```{r}
+# TODO : cnt merged DF by dept and search_type (rent / sale) and compare with API numbers
+
+
 for(i in 1:length(listing_df)) {
-  nrow(listing_df[[i]])
+  print(nrow(merged_listing_df))
 }
+
+# Check for duplicates
+merged_listing_df[duplicated(merged_listing_df$listing_id), ]$listing_id
+
 
 filter(listing_df[[1]], listing_id == 112919969) %>%
   select(party_id, listing_id, agency_id, crtn_dt, updt_dt, title, label, price, price_unit, room_nb, surf_area)
@@ -91,11 +147,17 @@ filter(listing_df[[1]], listing_id == 112919969) %>%
 ```
 
 
-
-## TODO : cleanup data (NA, "", etc.)
+## TODO : export merged DF to csv file
 ```{r}
-# Done in Tableau instead of R for pedagogical reasons
+depart_str <- paste(DEPART_TO_GET, collapse = '-')
+merged_fname <- file.path(data_to_load_dir, paste0("merged_listings_", depart_str, ".csv"))
+write.csv2(merged_listing_df, merged_fname)
 
 ```
 
-## TODO : move functions and constants to separate files
+
+## TODO : cleanup data (NA, "", etc.)
+```{r}
+# Done in Tableau instead of R (for pedagogical reasons)
+
+```

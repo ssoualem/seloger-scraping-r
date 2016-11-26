@@ -22,7 +22,7 @@ get_next_pg_url(xml_paris)
 get_next_pg_url(xml_1_page)
 
 
-all_pg_xml_paris <- get_all_page_xml(search_url_paris)
+all_pg_xml_paris <- get_all_page_xml(search_url_paris, verbose = TRUE)
 all_pg_xml_paris[[1]] 
 all_pg_xml_paris[[4]]
 
@@ -90,3 +90,19 @@ null_bug_df$price
 zero_listing <- "http://ws.seloger.com/search.xml?idtt=1&cp=77139&pxmin=0&tri=a_px"
 zero_xml <- xmlParse(zero_listing)
 get_displayed_nb_listing(zero_xml)
+
+
+# Bug : Start tag expected, '<' not found 
+# Url : http://ws.seloger.com/search.xml?idtt=2&cp=95000&pxmin=235450&tri=a_px => bug probably on page 3
+no_start_url <- "http://ws.seloger.com/http://ws.seloger.com/http://ws.seloger.com/search.xml?cp=95000&idtt=2&pxmin=235450&tri=a_px&SEARCHpg=3"
+xml_no_start <- xmlParse(no_start_url)
+
+
+
+
+
+search_url_paris_plus_200
+
+postal_cd_to_search[[1]]
+df_t <- get_all_listing_df(75, search_type = "sale", max_surf_area = 9, verbose = TRUE) %>% merge_listing_df()
+str(df_t)

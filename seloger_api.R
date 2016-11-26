@@ -74,7 +74,7 @@ get_search_url <- function(
 
 # IN : XML (result of xmlParse)
 # OUT : listings dataframe
-xml_listing_to_df <- function(xml) {
+xml_listing_to_df <- function(xml, search_type) {
   if(is.null(xml)) {
     xml_df <- NULL
   } else {
@@ -100,6 +100,9 @@ xml_listing_to_df <- function(xml) {
       
       # Convert French attributes to English names
       names(xml_df) <- LISTING_ATTR_EN
+      
+      # Set "for rent" or "for sale" code
+      xml_df$search_type_cd <- SEARCH_TYPE_PARAM_VALUE[[search_type]] %>% as.integer()
       
       # Convert to right types
       # Can't be done in xmlToDataFrame() because attributes are not always present and not in the same order
@@ -152,9 +155,15 @@ get_displayed_nb_listing <- function(xml) {
 }
 
 get_next_pg_url <- function(xml) {
+
   nodes <- getNodeSet(xml, "//pageSuivante")
   if(length(nodes) > 0) {
     result <- xmlValue(nodes[[1]])
+    
+    # Replace duplicated base URL sent by the API to avoid using URL like these
+    # http://ws.seloger.com/http://ws.seloger.com/http://ws.seloger.com/http://ws.seloger.com/search.xml?...
+    pattern <- ".*search.xml[?]"
+    result <- gsub(pattern, BASE_SEARCH_URL, result, ignore.case = TRUE)
   } else {
     result <- NULL
   }
@@ -163,32 +172,42 @@ get_next_pg_url <- function(xml) {
 
 # Get the XML for each available page of the search  result
 get_all_page_xml <- function(search_url, verbose = FALSE) {
-  if(verbose) {
-    print(paste("Getting XML for page :", search_url))
-  }
   
-  listing_xml <- list(xmlParse(search_url))
-  
-  
-  
-  next_pg_url <- get_next_pg_url(listing_xml[[1]])
+  # Get all available pages for this search
+  listing_xml <- list()
+  next_pg_url <- search_url
   while(!is.null(next_pg_url)) {
-    # Wait 1 second to not spam the server
-    Sys.sleep(1)
     if(verbose) {
       print(paste("Getting XML for page :", next_pg_url))
     }
     
-    listing_xml <- append(listing_xml, xmlParse(next_pg_url))
+    #listing_xml <- append(listing_xml, xmlParse(next_pg_url))
+    
+    # Get first page of the search
+    listing_xml <- tryCatch({
+      append(listing_xml, xmlParse(next_pg_url))
+    }, error = function(e) {
+      # print error
+      traceback()
+      
+      # Wait and try again because sometimes the website does not send a valid document
+      # but another request gets the right XML
+      Sys.sleep(5 * TIME_BETWEEN_REQ_S)
+      if(verbose) {
+        print(paste("Error: trying again to get XML for page :", search_url))
+      }
+      append(listing_xml, xmlParse(next_pg_url))
+    })
+    
+    # Get next page URL
     next_pg_url <- listing_xml[[length(listing_xml)]] %>% get_next_pg_url()
+    
+    # Wait 1 second to not spam the server
+    Sys.sleep(TIME_BETWEEN_REQ_S)
   }
   
   listing_xml
 }
-
-#########################################################################################################
-# TODO : if rent attribute exists and is not NA, use it for the max calc instead of price
-#########################################################################################################
 
 # This function WILL output duplicate listings to avoid missing some
 # The duplicates need to be removed based on the listing_id
@@ -197,6 +216,10 @@ get_all_listing_df <- function(..., min_price= 0, listing_df_list = NULL, verbos
   search_param <- list(...)
   if(!is.null(search_param$order_by)) {
     stop("The order_by argument cannot be set explicitly because it needs to be forced by this function.")
+  }
+  
+  if(is.null(search_param$search_type) || is.na(search_param$search_type)) {
+    stop("The search_type argument must be set.")
   }
   
   # Force ascending price ordering for the search results
@@ -212,7 +235,7 @@ get_all_listing_df <- function(..., min_price= 0, listing_df_list = NULL, verbos
   }
   
   # Convert all pages XML to dataframes
-  listing_df_list <- append(listing_df_list, lapply(listing_xml_list, xml_listing_to_df))
+  listing_df_list <- append(listing_df_list, lapply(listing_xml_list, xml_listing_to_df, search_param$search_type))
 
   # If not all results can be displayed, do another search to get more results
   if(total_nb_listing > nb_displayed_listing) {
@@ -237,9 +260,6 @@ get_all_listing_df <- function(..., min_price= 0, listing_df_list = NULL, verbos
             minimum price of this search (", min_price,").
            Stopping to avoid infinite recursion"))
     }
-    
-    # Wait 1 second to not spam the server
-    Sys.sleep(1)
     
     # Recursive call to get all the results
     listing_df_list <- get_all_listing_df(..., min_price = max_price, listing_df_list = listing_df_list, verbose = verbose)

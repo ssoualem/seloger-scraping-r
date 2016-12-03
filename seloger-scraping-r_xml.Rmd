@@ -157,8 +157,8 @@ merged_listing_df[duplicated(merged_listing_df$listing_id), ]$postal_cd %>%
 ## TODO : export merged DF to csv file
 ```{r}
 depart_str <- paste(DEPART_TO_GET, collapse = '-')
-merged_fname <- file.path(data_to_load_dir, paste0("merged_listings_", depart_str, ".csv"))
-write.csv2(merged_listing_df, merged_fname)
+merged_fname <- file.path(data_to_load_dir, paste0("merged_listings_", depart_str, "_", ts, ".csv"))
+write.csv2(merged_listing_df, merged_fname, row.names = FALSE)
 
 ```
 

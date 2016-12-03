@@ -98,6 +98,7 @@ for(p_cd in postal_cd_to_search) {
     cat(paste("\nFor", type, ", postal_cd =", p_cd_str, ":", Sys.time(), "\n\n"))
     tmp_fname <- file.path(extr_data_dir, paste0(i, "_", type, "_", dept_nb, "_", ts, ".Rds"))
     listing_df[[i]] <- get_all_listing_df(p_cd_str, search_type = type, verbose = TRUE) %>% merge_listing_df()
+    # Save temporary DF in case of problems
     saveRDS(listing_df[[i]], tmp_fname)
     cat("\n")
     i <- i + 1
@@ -119,30 +120,36 @@ data_to_load_dir <- extr_data_dir
 for(i in 1:length(listing_df)) {
   print(paste(i, ":", nrow(listing_df[[i]])))
 }
-
-merged_listing_df <- bind_rows(listing_df)
+# Merge listings and remove duplicates
+# The same listing can be found in multiple searches if the postal code is not well defined
+# Example : listings with postal code 94 will appear in all searches of 94XXX
+merged_listing_df <- merge_listing_df(listing_df)
 ```
 
 
-## TODO : basic sanity check (compare with manual search on the API)
+## Basic sanity check 
 ```{r}
 # TODO : cnt merged DF by dept and search_type (rent / sale) and compare with API numbers
 
+print("Number of listings by department and listing type (rent or sale):")
+table(substring(merged_listing_df$postal_cd, 1, 2), merged_listing_df$search_type_cd)
 
-for(i in 1:length(listing_df)) {
-  print(nrow(merged_listing_df))
-}
+
+# Some listings from departments not in the listcan be found
+# => Data quality problem, usually about the same cities
+filter(merged_listing_df, substring(merged_listing_df$postal_cd, 1, 2) == 91) %>%
+  select(city, postal_cd, title, label)
+
+filter(merged_listing_df, substring(merged_listing_df$postal_cd, 1, 2) == 91) %>%
+  select(city) %>%
+  unique()
 
 # Check for duplicates
+print("Duplicate listings after merge :")
 merged_listing_df[duplicated(merged_listing_df$listing_id), ]$listing_id
 
-
-filter(listing_df[[1]], listing_id == 112919969) %>%
-  select(party_id, listing_id, agency_id, crtn_dt, updt_dt, title, label, price, price_unit, room_nb, surf_area)
-
-filter(listing_df[[1]], listing_id == 112919969) %>%
-  select(surf_area_unit, country_id, country, postal_cd, location_insee_cd
-         , city, latitude, longitude)
+merged_listing_df[duplicated(merged_listing_df$listing_id), ]$postal_cd %>%
+  unique()
 
 ```
 
